@@ -1,4 +1,4 @@
-# src/assembler.py
+# src/assembler.py (обновлённый)
 
 import sys
 import csv
@@ -22,26 +22,33 @@ def parse_source(filepath):
             operand = row.get("operand", "").strip()
             operand_val = int(operand) if operand else None
 
-            # Валидация операндов
             if opcode == "LOAD":
                 if not (0 <= operand_val <= (1 << 31) - 1):
                     raise ValueError(f"LOAD operand out of range: {operand_val}")
             elif opcode == "WRITE":
-                if not (0 <= operand_val <= 4095):  # 12 бит (7–19 = 13 бит, но 0–4095 = 12 бит)
+                if not (0 <= operand_val <= 4095):
                     raise ValueError(f"WRITE address out of range: {operand_val}")
 
             instructions.append({"opcode": opcode, "operand": operand_val})
     return instructions
 
-def print_intermediate(instructions):
-    for instr in instructions:
-        opcode_name = instr["opcode"]
-        operand = instr["operand"]
-        a = OPCODE_MAP[opcode_name]
-        if operand is not None:
-            print(f"A={a}, B={operand}")
-        else:
-            print(f"A={a}")
+def encode_instruction(instr):
+    opcode = instr["opcode"]
+    operand = instr["operand"]
+    a = OPCODE_MAP[opcode]
+
+    if opcode == "LOAD":
+        value = a | (operand << 7)
+        return value.to_bytes(5, byteorder='little')
+    elif opcode == "READ":
+        return bytes([a])
+    elif opcode == "WRITE":
+        value = a | (operand << 7)
+        return value.to_bytes(3, byteorder='little')
+    elif opcode == "BSWAP":
+        return bytes([a])
+    else:
+        raise ValueError(f"Неизвестная команда: {opcode}")
 
 def main():
     if len(sys.argv) < 3:
@@ -52,20 +59,21 @@ def main():
     output_path = sys.argv[2]
     test_mode = "--test" in sys.argv
 
-    if not os.path.exists(input_path):
-        print(f"Файл не найден: {input_path}")
-        sys.exit(1)
-
     instructions = parse_source(input_path)
 
+    binary = b""
+    for instr in instructions:
+        binary += encode_instruction(instr)
+
+    with open(output_path, "wb") as f:
+        f.write(binary)
+
+    print(f"Успешно ассемблировано {len(instructions)} команд.")
+
     if test_mode:
-        print_intermediate(instructions)
-
-    # На этом этапе не записываем бинарник — только промежуточное представление
-    # Сохраняем инструкции как внутреннюю структуру (для Этапа 2 будем использовать её)
-
-    # Сохраняем во временный файл или передаём дальше (в данном случае просто подтверждаем)
-    print(f"Успешно обработано {len(instructions)} команд.")
+        # Вывод в формате: 0xB9, 0x93, ...
+        bytes_list = [f"0x{b:02X}" for b in binary]
+        print(", ".join(bytes_list))
 
 if __name__ == "__main__":
     main()
