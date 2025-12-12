@@ -1,0 +1,5 @@
+opcode,operand
+LOAD,295
+READ,
+WRITE,41
+BSWAP,
