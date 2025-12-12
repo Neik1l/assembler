@@ -1,0 +1,6 @@
+opcode,operand
+LOAD,42
+WRITE,100
+LOAD,100
+READ,
+WRITE,200
